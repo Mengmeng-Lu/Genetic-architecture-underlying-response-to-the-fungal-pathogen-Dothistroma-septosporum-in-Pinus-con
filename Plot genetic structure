@@ -1,0 +1,153 @@
+### Below codes were used for "Genetic structure analyses" in the manuscript ####
+
+
+### To plot PCA using R package "adegenet" ###
+
+library(data.table)
+da<-fread("fil_mask_MAD_rnd.input",sep="\t",header=T)
+da2<-data.frame(da[,c(-1,-31718)],row.names=da[,1]$Sample)
+
+library(adegenet)
+
+obj<-df2genind(da2,ploidy=1,type="PA")
+pop(obj)<- da[,1]$Sample
+summary(obj)
+obj2<-genind2genpop(obj)
+
+X<-tab(obj2,NA.method="mean")
+pca1<-dudi.pca(X,scannf=FALSE,scale=FALSE)
+
+library(factoextra)
+
+library(RColorBrewer)
+temp_pop<-c(rep(1,100),rep(2,12),rep(3,28),rep(4,20))
+myCol=c("#1B9E77","#D95F02","#7570B3","deeppink4")[temp_pop]
+temp_iso<- as.factor(gsub(".*-","",row.names(da2)))
+
+myPch<-c(16,1,17,2)[temp_iso]
+lab<-c("BCpl_D1_R","BCpl_D1_S","BCpl_D2_R","BCpl_D2_S","ABpl_D1_R","ABpl_D1_S","ABpl_D2_R","ABpl_D2_S","ABpx_D1_R","ABpx_D1_S","ABpx_D2_R","ABpx_D2_S","ABpj_D1_R","ABpj_D1_S","ABpj_D2_R",> Bpj_D2_S")
+
+
+pdf("pca_geo_fil_MAD_rnd.pdf")
+par(mar=c(2,2,0.2,0.2))
+plot(pca1$li,col=myCol,cex=1.2,pch=myPch,bty="n",axes=FALSE,xaxt='n',yaxt='n',xlab="",ylab="",cex.lab=1.5)
+title(xlab="PC1 (13%)",line=0.7,cex.lab=1.5)
+title(ylab="PC2 (9%)",line=0.7,cex.lab=1.5)
+abline(h=0,v=0,col="grey",lty=2)
+legend("topright",pch=rep(c(16,1,17,2),4),col=rep(c("#1B9E77","#D95F02","#7570B3","deeppink4"),each=4),legend=lab,ncol=2,pt.cex=1.6)
+dev.off()
+
+
+
+### Make unrooted NJ tree using  R package "adegenet" ####
+
+library(data.table)
+da<-fread("fil_mask_MAD_rnd.input",sep="\t",header=T)
+da2<-data.frame(da[,c(-1,-31718)],row.names=da[,1]$Sample)
+
+library(adegenet)
+
+obj<-df2genind(da2,ploidy=1,type="PA")
+pop(obj)<- da[,1]$Sample
+summary(obj)
+obj2<-genind2genpop(obj)
+
+
+D<-dist(tab(obj2))
+
+library(ape)
+
+tre<-nj(D)  # classic Neighbour-Joining algorithm 
+
+library(RColorBrewer)
+
+
+temp_pop<-c(rep(1,100),rep(2,12),rep(3,28),rep(4,20))
+myCol=c("#1B9E77","#D95F02","#7570B3","deeppink4")[temp_pop]
+temp_iso<- as.factor(gsub(".*-","",row.names(da2)))
+myPch<-c(16,1,17,2)[temp_iso]
+
+lab<-c("BCpl_D1_R","BCpl_D1_S","BCpl_D2_R","BCpl_D2_S","ABpl_D1_R","ABpl_D1_S","ABpl_D2_R","ABpl_D2_S","ABpx_D1_R","ABpx_D1_S","ABpx_D2_R","ABpx_D2_S","ABpj_D1_R","ABpj_D1_S","ABpj_D2_R","ABpj_D2_S")
+
+
+pdf("nj_tree_rnd.pdf")
+par(mar=c(0.1,0.1,0.1,0.1))
+plot(tre, type="unrooted",edge.w=1,show.tip=FALSE)
+tiplabels(pch=myPch,col=myCol,cex=1.1)
+legend("topleft",pch=rep(c(16,1,17,2),4),col=rep(c("#1B9E77","#D95F02","#7570B3","deeppink4"),each=4),legend=lab,ncol=2,pt.cex=1.1)
+dev.off()
+
+
+correlation of allele frequencies, and population differentiation (FST) between samples using unlinked SNPs
+### Plot correlation of allele frequencies ###
+
+da<- read.table("majorAF_rnd.input",header=T,row.names=1)
+cor.M<-cor(da,use="complete.obs")
+rownames(cor.M)<-seq(1,160,by=1)
+colnames(cor.M)<-seq(1,160,by=1)
+
+
+### Make a key file to re-order the pops based on longitude
+
+key<-read.table("long_key.txt",header=F)
+as.factor(key[,1])
+
+
+cor.M2<-cor.M[,as.factor(key[,1])]
+cor.M3<-cor.M2[as.factor(key[,1]),]
+
+
+library(corrplot)
+
+pdf("cor_majorAF_rnd_order_by_long.pdf")
+corrplot(cor.M3, type="upper",method="color",  tl.pos="n")
+dev.off()
+
+
+
+### Calculated population differentiation (FST) between samples using poolfstat  ###
+
+library(poolfstat)
+poolinfo<-read.table("all_info.txt", header=F)
+
+SG.pooldata<-popsync2pooldata(sync.file = "popool_fst_rnd.sync", 
+							poolsizes = as.numeric(poolinfo$V2), 
+							poolnames = as.character(poolinfo$V1),
+				 			nthreads=16
+                            )
+
+
+SG.snp.fsts <- computeFST(SG.pooldata, method = "Anova", snp.index = NA)
+
+### Pairwise Fst matrix 
+SG.pair.fst <- computePairwiseFSTmatrix(SG.pooldata, method = "Anova",
+                                        min.cov.per.pool = 20, max.cov.per.pool = 400,
+                                        min.maf = 0.05,
+                                        output.snp.values = FALSE)
+
+### Turn Fst<0 to 0, and turn lower triangle to 0
+maIt <- SG.pair.fst$PairwiseFSTmatrix
+mat[mat<0] <- 0
+dim(mat)
+mat[lower.tri(mat)] <- 0
+
+rownames(mat)<-seq(1,160,by=1)
+colnames(mat)<-seq(1,160,by=1)
+
+### Make a key file to re-order the pops based on longitude
+### Arrange pools within a species according to their longitude
+key<-read.table("long_key.txt",header=F)
+
+
+mat2<-mat[as.factor(key[,1]),as.factor(key[,1])]
+mat2
+
+
+library(corrplot)
+library("grDevices")
+
+
+pdf("popool_fst_rnd..pdf")
+corrplot(mat2*100, method="color",type="upper",tl.pos="n",diag=FALSE,col=rev(terrain.colors(20)),is.corr=FALSE)
+dev.off()
+
