@@ -1,0 +1,436 @@
+### The below codes were used to calculate LD decay, the input files can be found in the Dryad deposit
+
+### Calculate pairwise r2 
+
+library(WGCNA)
+
+da_sig<-read.table("plall_AF_sig.txt",header=F, row.names=5)
+sig_list<-read.table("sig_list.txt",header=F)
+
+cor_val_sig <- matrix(NA, nrow=nrow(sig_list),ncol=1)
+da_sig_each <- list()
+cor_val_sig <-list()
+ut<-list()
+df<-list()
+df_all_sig<-data.frame()
+
+
+for (i in 1:nrow(sig_list)) {
+	
+	da_sig_each[[i]]<- subset(da_sig, V1 ==sig_list[i,1])[,-c(1:5)]
+	
+	skip_to_next<-FALSE	
+	
+	tryCatch(test<-WGCNA::cor(t(da_sig_each[[i]]), method="spearman", use = "pairwise.complete.obs"),error=function(e){skip_to_next<<-TRUE})
+  	if(skip_to_next){next}
+	
+
+	cor_val_sig[[i]] <- (WGCNA::cor(t(da_sig_each[[i]]), method="spearman", use = "pairwise.complete.obs"))^2
+	
+	ut[[i]]<-upper.tri(cor_val_sig[[i]])
+	
+	df[[i]] <- data.frame(row = rownames(cor_val_sig[[i]])[row(cor_val_sig[[i]])[ut[[i]]]],
+    		              column = rownames(cor_val_sig[[i]])[col(cor_val_sig[[i]])[ut[[i]]]],
+       			      cor_val_sig[[i]][ut[[i]]] )
+				
+	df_all_sig<-rbind(df_all_sig, df[[i]])
+	
+}
+
+write.table(df_all_sig, file="all_cor.txt", quote=FALSE, row.names=FALSE, sep="\t")
+
+
+##########################################################################################
+
+library(WGCNA)
+
+da<-read.table("plall_AF_add.txt",header=F,row.names=5)
+sca_list<-read.table("sig_notsig_scaf.txt",header=F) 
+
+
+da_each <- list()
+cor_val <-list()
+ut <-list()
+df <-list()
+df_all <-data.frame()
+
+
+for (i in 1:nrow(sca_list)) {
+	
+	da_each[[i]]<- subset(da, V1 ==sca_list[i,1])[,-c(1:5)]
+	
+	skip_to_next<-FALSE	
+	
+	tryCatch(test<-WGCNA::cor(t(da_each[[i]]), method="spearman", use = "pairwise.complete.obs"),error=function(e){skip_to_next<<-TRUE})
+  	if(skip_to_next){next}
+	
+
+	cor_val[[i]] <- (WGCNA::cor(t(da_each[[i]]), method="spearman", use = "pairwise.complete.obs"))^2
+	
+	ut[[i]]<-upper.tri(cor_val[[i]])
+	
+	df[[i]] <- data.frame(row = rownames(cor_val[[i]])[row(cor_val[[i]])[ut[[i]]]],
+    		              column = rownames(cor_val[[i]])[col(cor_val[[i]])[ut[[i]]]],
+       			      cor_val[[i]][ut[[i]]] )
+				
+	df_all <-rbind(df_all, df[[i]])
+	
+}
+
+write.table(df_all, file="all_cor.txt", quote=FALSE, row.names=FALSE, sep="\t")
+
+
+
+
+### Estimate decay of linkage disequilibrium with distance
+
+Reference https://fabiomarroni.wordpress.com/2011/08/09/estimate-decay-of-linkage-disequilibrium-with-distance/
+
+### Get distance between SNPs
+
+$ sed 's/|/\t/g' all_cor.txt | awk '{gsub("-","\t",$2)}1'| awk '{gsub("-","\t",$5)}1'|sed 's/ /\t/g' | awk '{print $0"\t"$6-$3+1}' |sed 1d >  all_cor_dis.txt
+
+$ awk 'FNR==NR{a[$1];next}($2 in a)' sig_list.txt  all_cor_dis.txt > all_cor_sig_dis.txt
+
+
+$ awk '{print $2}' all_cor_sig_dis.txt|sort|uniq |wc -l
+2297
+
+
+### Estimate number of sampled alleles
+
+
+$ sed 1d all_cor_dis.txt | awk '{print $1}' >./pos/all_pos1.interim
+$ sed 1d all_cor_dis.txt | awk '{print $4}' >./pos/all_pos2.interim
+$ cd ./pos/
+$ cat all_pos1.interim  all_pos2.interim | sort|uniq > all_pos.txt
+$ wc -l all_pos.txt
+360304 all_pos.txt
+
+
+$ awk '{print $1}' all_cor_sig_dis.txt > ./pos/sig_pos1.interim
+$ awk '{print $4}' all_cor_sig_dis.txt > ./pos/sig_pos2.interim
+$ cd ./pos/
+$ cat  sig_pos1.interim  sig_pos2.interim|sort|uniq > sig_pos.txt
+$ wc -l sig_pos.txt
+55817 sig_pos.txt
+
+
+/data/programs/R-4.0.3/bin/R
+
+da <-read.table("all_cor_dis.txt",header=F)
+distance=da[,8]
+LD.data=da[,7]
+
+
+n=360304
+HW.st=c(C=0.1)
+
+HW.nonlinear=nls(LD.data~((10+C*distance)/((2+C*distance)*(11+C*distance)))*(1+((3+C*distance)*(12+12*C*distance+(C*distance)^2))/(n*(2+C*distance)*(11+C*distance))),start=HW.st,control=nls.control(maxiter=100))
+
+tt=summary(HW.nonlinear)
+
+tt
+
+new.rho=tt$parameters[1]
+
+fpoints=((10+new.rho*distance)/((2+new.rho*distance)*(11+new.rho*distance)))*(1+((3+new.rho*distance)*(12+12*new.rho*distance+(new.rho*distance)^2))/(n*(2+new.rho*distance)*(11+new.rho*distance)))
+
+
+## How to get the half-decay distance
+
+df=data.frame(distance,fpoints)
+
+#You could elucubrate if it's better to use the maximum ESTIMATED value of LD
+#In that case you just set: maxld=max(fpoints)
+# maxld=max(LD.data,na.rm=T)
+
+maxld=max(fpoints)
+maxld
+
+
+h.decay=maxld/2
+half.decay.distance=df$distance[which.min(abs(df$fpoints-h.decay))]
+half.decay.distance
+
+
+
+#########
+
+da_sig<-read.table("all_cor_sig_dis.txt",header=F)
+
+distance_sig=da_sig[,8]
+LD.sig.data=da_sig[,7]
+
+
+n_sig=55817
+HW.st=c(C=0.1)
+
+sig.HW.nonlinear=nls(LD.sig.data~((10+C*distance_sig)/((2+C*distance_sig)*(11+C*distance_sig)))*(1+((3+C*distance_sig)*(12+12*C*distance_sig+(C*distance_sig)^2))/(n_sig*(2+C*distance_sig)*(11+C*distance_sig))),start=HW.st,control=nls.control(maxiter=100))
+
+tt_sig=summary(sig.HW.nonlinear)
+tt_sig
+
+sig.new.rho=tt_sig$parameters[1]
+
+fpoints.sig=((10+sig.new.rho*distance_sig)/((2+sig.new.rho*distance_sig)*(11+sig.new.rho*distance_sig)))*(1+((3+sig.new.rho*distance_sig)*(12+12*sig.new.rho*distance_sig+(sig.new.rho*distance_sig)^2))/(n_sig*(2+sig.new.rho*distance_sig)*(11+sig.new.rho*distance_sig)))
+
+
+
+## How to get the half-decay distance
+
+
+sig.df=data.frame(distance_sig,fpoints.sig)
+
+#You could elucubrate if it's better to use the maximum ESTIMATED value of LD
+#In that case you just set: maxld=max(fpoints)
+# maxld=max(LD.data,na.rm=T)
+
+maxld.sig=max(fpoints.sig)
+maxld.sig
+
+
+
+sig.h.decay=maxld.sig/2
+sig.half.decay.distance=sig.df$distance_sig[which.min(abs(sig.df$fpoints.sig-sig.h.decay))]
+sig.half.decay.distance
+
+
+
+### plot
+
+ld.df=data.frame(distance,fpoints)
+ld.df=ld.df[order(ld.df$distance),]
+
+sig.ld.df=data.frame(distance_sig,fpoints.sig)
+sig.ld.df=sig.ld.df[order(sig.ld.df$distance_sig),]
+
+
+pdf("pl_LD_decay.pdf")
+par(mar=c(5, 5, 2, 1))
+plot(distance,LD.data,xlim=c(0,5000),type="n",xlab="Distance (bp)",ylab=expression(italic(r)^2),cex.lab=1.4,cex.axis=1.4)
+lines(ld.df$distance,ld.df$fpoints,lty=1,lwd=3,col="blue")
+lines(sig.ld.df$distance_sig,sig.ld.df$fpoints.sig,lty=1,lwd=3,col="red")
+legend(2000, 0.95, legend=c("Genome-wide", "Significant"),col=c("blue", "red"), lty=1,lwd=3, cex=1.5, box.lty=0)
+dev.off()
+
+
+####################################################################################################
+####################################################################################################
+####################################################################################################
+
+library(WGCNA)
+
+da_sig<-read.table("pxjall_AF_sig.txt",header=F, row.names=5)
+sig_list<-read.table("sig_list.txt",header=F)
+
+cor_val_sig <- matrix(NA, nrow=nrow(sig_list),ncol=1)
+da_sig_each <- list()
+cor_val_sig <-list()
+ut<-list()
+df<-list()
+df_all_sig<-data.frame()
+
+
+for (i in 1:nrow(sig_list)) {
+	
+	da_sig_each[[i]]<- subset(da_sig, V1 ==sig_list[i,1])[,-c(1:5)]
+	
+	skip_to_next<-FALSE	
+	
+	tryCatch(test<-WGCNA::cor(t(da_sig_each[[i]]), method="spearman", use = "pairwise.complete.obs"),error=function(e){skip_to_next<<-TRUE})
+  	if(skip_to_next){next}
+	
+
+	cor_val_sig[[i]] <- (WGCNA::cor(t(da_sig_each[[i]]), method="spearman", use = "pairwise.complete.obs"))^2
+	
+	ut[[i]]<-upper.tri(cor_val_sig[[i]])
+	
+	df[[i]] <- data.frame(row = rownames(cor_val_sig[[i]])[row(cor_val_sig[[i]])[ut[[i]]]],
+    		              column = rownames(cor_val_sig[[i]])[col(cor_val_sig[[i]])[ut[[i]]]],
+       			      cor_val_sig[[i]][ut[[i]]] )
+				
+	df_all_sig<-rbind(df_all_sig, df[[i]])
+	
+}
+
+write.table(df_all_sig, file="all_cor.txt", quote=FALSE, row.names=FALSE, sep="\t")
+
+
+
+
+##########################################################################################
+
+library(WGCNA)
+
+da<-read.table("pxjall_AF_add.txt",header=F,row.names=5)
+sca_list<-read.table("sig_notsig_scaf.txt",header=F)
+
+
+da_each <- list()
+cor_val <-list()
+ut <-list()
+df <-list()
+df_all <-data.frame()
+
+
+for (i in 1:nrow(sca_list)) {
+	
+	da_each[[i]]<- subset(da, V1 ==sca_list[i,1])[,-c(1:5)]
+	
+	skip_to_next<-FALSE	
+	
+	tryCatch(test<-WGCNA::cor(t(da_each[[i]]), method="spearman", use = "pairwise.complete.obs"),error=function(e){skip_to_next<<-TRUE})
+  	if(skip_to_next){next}
+	
+
+	cor_val[[i]] <- (WGCNA::cor(t(da_each[[i]]), method="spearman", use = "pairwise.complete.obs"))^2
+	
+	ut[[i]]<-upper.tri(cor_val[[i]])
+	
+	df[[i]] <- data.frame(row = rownames(cor_val[[i]])[row(cor_val[[i]])[ut[[i]]]],
+    		              column = rownames(cor_val[[i]])[col(cor_val[[i]])[ut[[i]]]],
+       			      cor_val[[i]][ut[[i]]] )
+				
+	df_all <-rbind(df_all, df[[i]])
+	
+}
+
+write.table(df_all, file="all_cor.txt", quote=FALSE, row.names=FALSE, sep="\t")
+
+
+
+### Estimate decay of linkage disequilibrium with distance
+
+Reference https://fabiomarroni.wordpress.com/2011/08/09/estimate-decay-of-linkage-disequilibrium-with-distance/
+
+### Get distance between SNPs
+
+$ sed 's/|/\t/g' /data/not_backup/mengmeng/LP_doth_GWAS/gwas/cmh_output_2022/r2_pxj/make_input/all_cor.txt | awk '{gsub("-","\t",$2)}1'| awk '{gsub("-","\t",$5)}1'|sed 's/ /\t/g' | awk '{print $0"\t"$6-$3+1}' |sed 1d >  all_cor_dis.txt
+
+$ awk 'FNR==NR{a[$1];next}($2 in a)' /data/not_backup/mengmeng/LP_doth_GWAS/gwas/cmh_output_2022/r2_pxj/make_input/sig_list.txt  all_cor_dis.txt > all_cor_sig_dis.txt
+
+$ awk '{print $2}' all_cor_sig_dis.txt|sort|uniq |wc -l
+1933
+
+
+### Estimate number of sampled alleles
+
+$ sed 1d all_cor_dis.txt | awk '{print $1}' >./pos/all_pos1.interim
+$ sed 1d all_cor_dis.txt | awk '{print $4}' >./pos/all_pos2.interim
+
+$ cat all_pos1.interim  all_pos2.interim | sort|uniq > all_pos.txt
+$ wc -l all_pos.txt
+360304 all_pos.txt
+
+
+$ awk '{print $1}' all_cor_sig_dis.txt > ./pos/sig_pos1.interim
+$ awk '{print $4}' all_cor_sig_dis.txt > ./pos/sig_pos2.interim
+
+$ cat  sig_pos1.interim  sig_pos2.interim|sort|uniq > sig_pos.txt
+$ wc -l sig_pos.txt
+46495 sig_pos.txt
+
+
+
+
+da <-read.table("all_cor_dis.txt",header=F)
+distance=da[,8]
+LD.data=da[,7]
+
+
+n=360304
+HW.st=c(C=0.1)
+
+HW.nonlinear=nls(LD.data~((10+C*distance)/((2+C*distance)*(11+C*distance)))*(1+((3+C*distance)*(12+12*C*distance+(C*distance)^2))/(n*(2+C*distance)*(11+C*distance))),start=HW.st,control=nls.control(maxiter=100))
+
+tt=summary(HW.nonlinear)
+
+tt
+
+new.rho=tt$parameters[1]
+
+fpoints=((10+new.rho*distance)/((2+new.rho*distance)*(11+new.rho*distance)))*(1+((3+new.rho*distance)*(12+12*new.rho*distance+(new.rho*distance)^2))/(n*(2+new.rho*distance)*(11+new.rho*distance)))
+
+
+## How to get the half-decay distance
+
+df=data.frame(distance,fpoints)
+
+#You could elucubrate if it's better to use the maximum ESTIMATED value of LD
+#In that case you just set: maxld=max(fpoints)
+# maxld=max(LD.data,na.rm=T)
+
+maxld=max(fpoints)
+maxld
+
+
+
+h.decay=maxld/2
+half.decay.distance=df$distance[which.min(abs(df$fpoints-h.decay))]
+half.decay.distance
+
+
+
+#########
+
+da_sig<-read.table("all_cor_sig_dis.txt",header=F)
+
+distance_sig=da_sig[,8]
+LD.sig.data=da_sig[,7]
+
+
+n_sig=46495
+HW.st=c(C=0.1)
+
+sig.HW.nonlinear=nls(LD.sig.data~((10+C*distance_sig)/((2+C*distance_sig)*(11+C*distance_sig)))*(1+((3+C*distance_sig)*(12+12*C*distance_sig+(C*distance_sig)^2))/(n_sig*(2+C*distance_sig)*(11+C*distance_sig))),start=HW.st,control=nls.control(maxiter=100))
+
+tt_sig=summary(sig.HW.nonlinear)
+tt_sig
+
+sig.new.rho=tt_sig$parameters[1]
+
+fpoints.sig=((10+sig.new.rho*distance_sig)/((2+sig.new.rho*distance_sig)*(11+sig.new.rho*distance_sig)))*(1+((3+sig.new.rho*distance_sig)*(12+12*sig.new.rho*distance_sig+(sig.new.rho*distance_sig)^2))/(n_sig*(2+sig.new.rho*distance_sig)*(11+sig.new.rho*distance_sig)))
+
+
+
+## How to get the half-decay distance
+
+
+sig.df=data.frame(distance_sig,fpoints.sig)
+
+#You could elucubrate if it's better to use the maximum ESTIMATED value of LD
+#In that case you just set: maxld=max(fpoints)
+# maxld=max(LD.data,na.rm=T)
+
+maxld.sig=max(fpoints.sig)
+maxld.sig
+
+
+sig.h.decay=maxld.sig/2
+sig.half.decay.distance=sig.df$distance_sig[which.min(abs(sig.df$fpoints.sig-sig.h.decay))]
+sig.half.decay.distance
+
+
+
+
+### plot
+
+ld.df=data.frame(distance,fpoints)
+ld.df=ld.df[order(ld.df$distance),]
+
+sig.ld.df=data.frame(distance_sig,fpoints.sig)
+sig.ld.df=sig.ld.df[order(sig.ld.df$distance_sig),]
+
+
+pdf("pxj_LD_decay.pdf")
+par(mar=c(5, 5, 2, 1))
+plot(distance,LD.data,xlim=c(0,400000),type="n",xlab="Distance (bp)",ylab=expression(italic(r)^2),cex.lab=1.4,cex.axis=1.4)
+lines(ld.df$distance,ld.df$fpoints,lty=1,lwd=3,col="blue")
+lines(sig.ld.df$distance_sig,sig.ld.df$fpoints.sig,lty=1,lwd=3,col="red")
+legend(2000, 0.95, legend=c("Genome-wide", "Significant"),col=c("blue", "red"), lty=1,lwd=3, cex=1.5, box.lty=0)
+dev.off()
+
+
+
+
