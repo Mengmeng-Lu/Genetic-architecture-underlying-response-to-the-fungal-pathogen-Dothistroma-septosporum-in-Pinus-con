@@ -1,5 +1,6 @@
+#############################################################################################################
 ### I copied and modified from https://genome.sph.umich.edu/wiki/Code_Sample:_Generating_Manhattan_Plots_in_R
-
+#############################################################################################################
 
 manhattan.plot<-function(chr, pos, pvalue, 
                          sig.level=NA, annotate=NULL, ann.default=list(),
