@@ -1,0 +1,115 @@
+##############################################################################
+#### Calculate Fst values of D. septosporum response outliers (Figure 5a & b) 
+##############################################################################
+
+library(ggplot2)
+library(dplyr)
+#install.packages("hrbrthemes")
+library(hrbrthemes)
+library(cowplot)
+library(gridExtra)
+
+
+da<-read.table("fst_input.txt", header=T)
+
+da_pl_ran<-subset(da,group=="pl"|group=="ran")
+dim(da_pl_ran)
+
+da_pxj_ran<-subset(da,group=="pxj"|group=="ran")
+dim(da_pxj_ran)
+
+da_pl_pxj<-subset(da,group=="pl"|group=="pxj")
+dim(da_pl_pxj)
+
+wilcox.test(fst~group,da_pl_ran)
+
+wilcox.test(fst~group,da_pxj_ran)
+
+wilcox.test(fst~group,da_pl_pxj)
+
+
+
+### Plot random and outlier points comparison
+
+pl <- da_pl_ran %>%
+  ggplot( aes(x=fst, fill=group)) +
+  geom_histogram( color="#e9ecef", alpha=0.6, binwidth=.05,position = 'identity') +
+   scale_fill_manual(values=c("#69b3a2", "#E7B800"),labels=c("Lodgepole","Random")) +
+  theme_ipsum() + labs(fill="") +scale_x_continuous(limits = c(-0.05, 0.4))
+
+pl_edit<- pl+ theme(axis.title.x = element_blank(), 
+                    axis.title.y = element_text(size=20,hjust=0.1),
+          axis.text.x = element_text(size=20,), 
+          axis.text.y = element_text(size=20),
+          legend.text = element_text(size=16) )
+
+
+pxj <- da_pxj_ran %>%
+  ggplot( aes(x=fst, fill=group)) +
+  geom_histogram( color="#e9ecef", alpha=0.6, binwidth=.05,position = 'identity') +
+  scale_fill_manual(values=c("#404080", "#E7B800"),labels=c("Jack-hybrid","Random")) +
+  theme_ipsum() + labs(fill="")+scale_x_continuous(limits = c(-0.05, 0.4))
+
+
+pxj_edit<- pxj+ theme(axis.title.x = element_blank(), 
+                          axis.title.y = element_text(size=20,hjust=0.1),
+                          axis.text.x = element_text(size=20,), 
+                          axis.text.y = element_text(size=20),
+                          legend.text = element_text(size=16) )
+
+plot_grid(pl_edit, pxj_edit, ncol = 1, nrow = 2, labels = c('a', 'b'), label_size = 20)
+
+
+
+
+########################################################################################################################################################################################
+### Calculate regression patterns of FST values with longitude for comparisons between each of the jack-hybrid populations and a group of pure lodgepole pine populations in different SNP sets (Figure c). 
+########################################################################################################################################################################################
+
+
+library(lsmeans)
+
+da<-read.csv("lrinput.csv", header=T)
+head(da)
+m.interaction <- lm(fst ~ long*type, data = da)
+anova(m.interaction)
+
+## Obtain slopes
+m.interaction$coefficients
+m.lst <- lstrends(m.interaction, "type", var="long")
+##compare slopes
+pairs(m.lst)
+
+da_plout<-subset(da,type=="plout")
+da_pxjout<-subset(da,type=="pxjout")
+da_ran<-subset(da,type=="ran")
+
+pdf("pxj_ran_out_compare.pdf")
+par(mar = c(5, 5, 2, 2))
+
+mypch<-c(15,16,17)
+mycol<-c("#660000","#6666FF","#FF66FF")
+plot(da$long, da$fst, pch=mypch[factor(da$type)],
+     col=mycol[factor(da$type)],
+     xlab="Longitude",
+     ylab=expression(italic(F)[ST]),cex.lab=1.5, cex.axis=1.5)
+
+abline(lm(da_plout$fst~da_plout$long), col="#660000",pch=15)
+abline(lm(da_pxjout$fst~da_pxjout$long), col="#6666FF",pch=16)
+abline(lm(da_ran$fst~da_ran$long), col="#FF66FF",pch=17)
+
+legend("topleft",
+       legend = c("Lodgepole", "Jack-hybrid", "Random"),
+       pch = c(15,16,17),
+       col = c("#660000","#6666FF","#FF66FF"), cex=1.1)
+
+dev.off()
+
+
+cor.test(da_plout$fst,da_plout$long)
+cor.test(da_pxjout$fst,da_pxjout$long)
+cor.test(da_ran$fst,da_ran$long)
+
+
+
+
