@@ -1,3 +1,6 @@
+I copied and modified from   https://genome.sph.umich.edu/wiki/Code_Sample:_Generating_Manhattan_Plots_in_R
+
+
 annotateSNPRegions<-function(snps, chr, pos, pvalue, snplist,
                              kbaway=0, maxpvalue=1, labels=c(), col=c(), pch=c()) {
   
