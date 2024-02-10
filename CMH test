@@ -1,3 +1,10 @@
+Lind, B.M. 2021a. GitHub.com/CoAdapTree/varscan_pipeline: Publication release (Version 1.0.0). Zenodo. https://doi.org/10.5281/zenodo.5083302.
+Lind, B.M. 2021b. GitHub.com/brandonlind/cmh_test: preprint release (Version 1.0.0). Zenodo.org, doi: http://doi.org/10.5281/zenodo.5083798.
+Lind, B.M., Lu, M., Obreht Vidakovic, D., Singh, P., Booker, T.R., Aitken, S.N., and Yeaman, S. 2022. Haploid, diploid, and pooled exome capture recapitulate features of biology and paralogy in two non-model tree species. Molecular Ecology Resources 22:225-238.
+
+
+
+
 ### cmh_pl.R
 ### In current folder,  *.txt are  allele frequency tables for each lodgepole pine population ###
 
