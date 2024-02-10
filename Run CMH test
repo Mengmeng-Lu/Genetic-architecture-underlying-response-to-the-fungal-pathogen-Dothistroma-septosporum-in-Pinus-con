@@ -1,0 +1,158 @@
+#A streamline version of CMH test workflow is in: 
+
+#Lind, B.M. 2021a. GitHub.com/CoAdapTree/varscan_pipeline: Publication release (Version 1.0.0). Zenodo. https://doi.org/10.5281/zenodo.5083302.
+#Lind, B.M. 2021b. GitHub.com/brandonlind/cmh_test: preprint release (Version 1.0.0). Zenodo.org, doi: http://doi.org/10.5281/zenodo.5083798.
+#Lind, B.M., Lu, M., Obreht Vidakovic, D., Singh, P., Booker, T.R., Aitken, S.N., and Yeaman, S. 2022. Haploid, diploid, and pooled exome capture recapitulate features of biology and paralogy in two non-model tree species. Molecular Ecology Resources 22:225-238.
+
+
+### Below are two "messy and ugly" CMH test written in R.
+
+### cmh_pl.R
+### In current folder,  *.txt are  allele frequency tables for each lodgepole pine population ###
+
+print(files<-list.files(pattern="*.txt"))
+
+da_1<-list()
+da_2<-list()
+
+
+for (i in 1:length(files)) {
+	da_1[[i]]<-read.table(files[i],header=F) }
+
+
+for (i in 1:length(files)) {
+	da_2[[i]]<-da_1[[i]][,c(1:2)]}
+
+
+
+array<-list()
+record<-list()
+filter<-list()
+array_new<-list()
+
+	
+table<-cbind(da_2[[1]],da_2[[2]],da_2[[3]],da_2[[4]],da_2[[5]],da_2[[6]],da_2[[7]],da_2[[8]],da_2[[9]],da_2[[10]],da_2[[11]],da_2[[12]],da_2[[13]],da_2[[14]],
+			da_2[[15]],da_2[[16]],da_2[[17]],da_2[[18]],da_2[[19]],da_2[[20]],da_2[[21]],da_2[[22]],da_2[[23]],da_2[[24]],da_2[[25]],da_2[[26]],da_2[[27]],da_2[[28]],
+			da_2[[29]],da_2[[30]],da_2[[31]],da_2[[32]],da_2[[33]],da_2[[34]],da_2[[35]],da_2[[36]],da_2[[37]],da_2[[38]],da_2[[39]],da_2[[40]],da_2[[41]],da_2[[42]],
+			da_2[[43]],da_2[[44]],da_2[[45]],da_2[[46]],da_2[[47]],da_2[[48]],da_2[[49]],da_2[[50]],da_2[[51]],da_2[[52]],da_2[[53]],da_2[[54]],da_2[[55]],da_2[[56]])
+
+
+len1<-nrow(da_1[[1]])     #### loci numbers
+len2<-28   #### array numbers
+
+
+for (j in 1:len1){
+	
+		array[[j]]<-array(c(table[j,1],table[j,3],table[j,2],table[j,4],table[j,5],table[j,7],table[j,6],table[j,8],table[j,9],table[j,11],table[j,10],table[j,12],table[j,13],table[j,15],table[j,14],table[j,16],table[j,17],table[j,19],table[j,18],table[j,20],table[j,21],table[j,23],table[j,22],table[j,24],table[j,25],table[j,27],table[j,26],table[j,28],table[j,29],table[j,31],table[j,30],table[j,32],table[j,33],table[j,35],table[j,34],table[j,36],table[j,37],table[j,39],table[j,38],table[j,40],table[j,41],table[j,43],table[j,42],table[j,44],table[j,45],table[j,47],table[j,46],table[j,48],table[j,49],table[j,51],table[j,50],table[j,52],table[j,53],table[j,55],table[j,54],table[j,56],table[j,57],table[j,59],table[j,58],table[j,60],table[j,61],table[j,63],table[j,62],table[j,64],table[j,65],table[j,67],table[j,66],table[j,68],table[j,69],table[j,71],table[j,70],table[j,72],table[j,73],table[j,75],table[j,74],table[j,76],table[j,77],table[j,79],table[j,78],table[j,80],table[j,81],table[j,83],table[j,82],table[j,84],table[j,85],table[j,87],table[j,86],table[j,88],table[j,89],table[j,91],table[j,90],table[j,92],table[j,93],table[j,95],table[j,94],table[j,96],table[j,97],table[j,99],table[j,98],table[j,100],table[j,101],table[j,103],table[j,102],table[j,104],table[j,105],table[j,107],table[j,106],table[j,108],table[j,109],table[j,111],table[j,110],table[j,112]),dim=c(2,2,len2))} 
+
+
+
+for (i in 1:len1){
+	record[[i]]<-rep(NA,len2)
+		for (j in 1:len2){		
+    		record[[i]][j]<-anyNA(array[[i]][,,j])
+		}
+}
+
+
+for (i in 1: len1) {
+  filter[[i]]<-seq(len2)[record[[i]]]
+  if (length(filter[[i]])==0) { array_new[[i]]<-array[[i]] } else 
+  {array_new[[i]]<-array[[i]][,,-as.numeric((filter[[i]]))]}
+}
+
+
+
+tbl<-matrix(NA,len1,5)
+
+for (i in 1:len1)  {
+
+	skip_to_next<-FALSE	
+	
+	tryCatch(test<-mantelhaen.test(array_new[[i]]),error=function(e){skip_to_next<<-TRUE})
+  	if(skip_to_next){next}
+  
+  	tbl[i,1]<-test$estimate
+  	tbl[i,2]<-test$p.value
+  	tbl[i,3]<-test$conf.int[1]
+  	tbl[i,4]<-test$conf.int[2]
+	tbl[i,5]<-length(array_new[[i]])/4
+}
+
+write.table(tbl,"cmh_test_output.txt", quote=FALSE, row.names=FALSE, sep="\t")
+
+
+
+### cmh_pxj.R 
+### In current folder,  *.txt are  allele frequency tables for each jack or hybrud pine population ###
+
+print(files<-list.files(pattern="*.txt"))
+
+da_1<-list()
+da_2<-list()
+
+
+
+for (i in 1:length(files)) {
+	da_1[[i]]<-read.table(files[i],header=F) }
+
+
+for (i in 1:length(files)) {
+	da_2[[i]]<-da_1[[i]][,c(1:2)]}
+
+	
+table<-cbind(da_2[[1]],da_2[[2]],da_2[[3]],da_2[[4]],da_2[[5]],da_2[[6]],da_2[[7]],da_2[[8]],da_2[[9]],da_2[[10]],da_2[[11]],da_2[[12]],da_2[[13]],da_2[[14]],
+      da_2[[15]],da_2[[16]],da_2[[17]],da_2[[18]],da_2[[19]],da_2[[20]],da_2[[21]],da_2[[22]],da_2[[23]],da_2[[24]] )
+
+array<-list()
+record<-list()
+filter<-list()
+array_new<-list()
+
+
+len1<-nrow(da_1[[1]])     #### loci numbers
+len2<- 12   #### array numbers
+
+
+for (j in 1:len1){
+	
+		array[[j]]<-array(c(table[j,1],table[j,3],table[j,2],table[j,4],table[j,5],table[j,7],table[j,6],table[j,8],table[j,9],table[j,11],table[j,10],table[j,12],table[j,13],table[j,15],table[
+j,14],table[j,16],table[j,17],table[j,19],table[j,18],table[j,20],table[j,21],table[j,23],table[j,22],table[j,24],table[j,25],table[j,27],table[j,26],table[j,28],table[j,29],table[j,31],table[j,30],table[j,32],table[j,33],table[j,35],table[j,34],table[j,36],table[j,37],table[j,39],table[j,38],table[j,40],table[j,41],table[j,43],table[j,42],table[j,44],table[j,45],table[j,47],table[j,46],table[j,48]), dim=c(2,2,len2))} 
+
+
+
+for (i in 1:len1){
+	record[[i]]<-rep(NA,len2)
+		for (j in 1:len2){		
+    		record[[i]][j]<-anyNA(array[[i]][,,j])
+		}
+}
+
+
+for (i in 1: len1) {
+  filter[[i]]<-seq(len2)[record[[i]]]
+  if (length(filter[[i]])==0) { array_new[[i]]<-array[[i]] } else 
+  {array_new[[i]]<-array[[i]][,,-as.numeric((filter[[i]]))]}
+}
+
+
+
+tbl<-matrix(NA,len1,5)
+
+for (i in 1:len1)  {
+
+	skip_to_next<-FALSE	
+	
+	tryCatch(test<-mantelhaen.test(array_new[[i]]),error=function(e){skip_to_next<<-TRUE})
+  	if(skip_to_next){next}
+  
+  	tbl[i,1]<-test$estimate
+  	tbl[i,2]<-test$p.value
+  	tbl[i,3]<-test$conf.int[1]
+  	tbl[i,4]<-test$conf.int[2]
+	tbl[i,5]<-length(array_new[[i]])/4
+}
+
+
+write.table(tbl,"cmh_test_output.txt", quote=FALSE, row.names=FALSE, sep="\t")
+
