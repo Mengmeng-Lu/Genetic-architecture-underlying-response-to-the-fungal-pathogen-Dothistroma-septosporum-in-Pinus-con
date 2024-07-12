@@ -78,6 +78,30 @@ legend("topleft",pch=rep(c(16,1,17,2),4),col=rep(c("#1B9E77","#D95F02","#7570B3"
 dev.off()
 
 
+
+
+## Perform a bootstrap analysis with 5000 bootstrap replicates.
+
+tr <- nj(D)
+my_boot <- boot.phylo(tr, df, function(xx) nj(dist(xx)),B = 5000)
+my_boot
+
+
+### Plot a phylogram with pie node labels showing bootstrap values.
+
+par(mar=c(0,0,0,0))
+
+plot(tr,edge.w=0.7,show.tip=FALSE)
+
+tiplabels(pch=myPch,col=myCol,cex=1.4)
+
+nodelabels(round(my_boot/5000*100),pie=my_boot/5000,cex=0.7)
+
+### Save the phylogram graph from zoom.
+
+
+
+
 correlation of allele frequencies, and population differentiation (FST) between samples using unlinked SNPs
 ### Plot correlation of allele frequencies ###
 
