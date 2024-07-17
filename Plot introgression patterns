@@ -34,7 +34,7 @@ wilcox.test(fst~group,da_pl_pxj)
 pl <- da_pl_ran %>%
   ggplot( aes(x=fst, fill=group)) +
   geom_histogram( color="#e9ecef", alpha=0.6, binwidth=.05,position = 'identity') +
-   scale_fill_manual(values=c("#69b3a2", "#E7B800"),labels=c("Lodgepole","Random")) +
+   scale_fill_manual(values=c("#1B9E77", "#E7B800"),labels=c("Lodgepole","Random")) +
   theme_ipsum() + labs(fill="") +scale_x_continuous(limits = c(-0.05, 0.4))
 
 pl_edit<- pl+ theme(axis.title.x = element_blank(), 
@@ -47,7 +47,7 @@ pl_edit<- pl+ theme(axis.title.x = element_blank(),
 pxj <- da_pxj_ran %>%
   ggplot( aes(x=fst, fill=group)) +
   geom_histogram( color="#e9ecef", alpha=0.6, binwidth=.05,position = 'identity') +
-  scale_fill_manual(values=c("#404080", "#E7B800"),labels=c("Jack-hybrid","Random")) +
+  scale_fill_manual(values=c("#7570B3", "#E7B800"),labels=c("Jack-hybrid","Random")) +
   theme_ipsum() + labs(fill="")+scale_x_continuous(limits = c(-0.05, 0.4))
 
 
@@ -88,20 +88,20 @@ pdf("pxj_ran_out_compare.pdf")
 par(mar = c(5, 5, 2, 2))
 
 mypch<-c(15,16,17)
-mycol<-c("#660000","#6666FF","#FF66FF")
+mycol<-c("#1B9E77","#7570B3","#E7B800")
 plot(da$long, da$fst, pch=mypch[factor(da$type)],
      col=mycol[factor(da$type)],
      xlab="Longitude",
-     ylab=expression(italic(F)[ST]),cex.lab=1.5, cex.axis=1.5)
+     ylab=expression(italic(F)[ST]),cex.lab=1.5, cex.axis=1.8)
 
-abline(lm(da_plout$fst~da_plout$long), col="#660000",pch=15)
-abline(lm(da_pxjout$fst~da_pxjout$long), col="#6666FF",pch=16)
-abline(lm(da_ran$fst~da_ran$long), col="#FF66FF",pch=17)
+abline(lm(da_plout$fst~da_plout$long), col="#1B9E77",pch=15,lwd=1.2)
+abline(lm(da_pxjout$fst~da_pxjout$long), col="#7570B3",pch=16,lwd=1.2)
+abline(lm(da_ran$fst~da_ran$long), col="#E7B800",pch=17,lwd=1.2)
 
 legend("topleft",
        legend = c("Lodgepole", "Jack-hybrid", "Random"),
        pch = c(15,16,17),
-       col = c("#660000","#6666FF","#FF66FF"), cex=1.1)
+       col = c("#1B9E77","#7570B3","#E7B800"), cex=1.2, bty = "n")
 
 dev.off()
 
